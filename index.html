@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MFL Defect Signature Classification</title>
+<style>
+:root{--bg:#0a0e14;--card:#121823;--line:#1f2a3a;--txt:#e6edf3;--mut:#8b98a9;--acc:#4da3ff;--acc2:#ffb454;--ok:#3fb950;}
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:var(--bg);color:var(--txt);font-family:'Segoe UI','Malgun Gothic',sans-serif;line-height:1.65}
+.wrap{max-width:920px;margin:0 auto;padding:0 22px}
+section{padding:64px 0;border-bottom:1px solid var(--line)}
+h1{font-size:2.5rem;font-weight:800;letter-spacing:-1px}
+h2{font-size:1.6rem;margin-bottom:8px;color:var(--acc)}
+h2 .num{color:var(--mut);font-weight:600;margin-right:10px;font-size:1.1rem}
+.lead{color:var(--mut);font-size:1.1rem;margin-top:14px}
+.tag{display:inline-block;background:#16202e;color:var(--acc);border:1px solid var(--line);border-radius:20px;padding:5px 14px;font-size:.82rem;margin:18px 6px 0 0}
+.hero{padding:90px 0 64px}
+.muted{color:var(--mut)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:24px}
+@media(max-width:680px){.grid2{grid-template-columns:1fr}h1{font-size:1.9rem}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;transition:.25s;opacity:0;transform:translateY(18px)}
+.card.show{opacity:1;transform:none}
+.card:hover{border-color:var(--acc);transform:translateY(-3px)}
+.card .q{color:var(--acc2);font-weight:700;font-size:.88rem;letter-spacing:.5px}
+.card h3{font-size:1.15rem;margin:8px 0 10px}
+.card p{color:var(--mut);font-size:.95rem;margin:6px 0}
+.card .res{display:inline-block;margin-top:10px;color:var(--ok);font-weight:700;font-family:monospace}
+/* staircase grid */
+.sg{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:520px;margin:26px auto 8px}
+.sg .cell{aspect-ratio:1;background:#0f1620;border:1px solid var(--line);border-radius:4px;font-size:.6rem;display:flex;align-items:center;justify-content:center;color:#3a4860;transition:.3s}
+.sg .cell.hot{background:var(--acc2);color:#000;box-shadow:0 0 14px var(--acc2);font-weight:700}
+.chl{display:grid;grid-template-columns:repeat(10,1fr);gap:4px;max-width:520px;margin:0 auto;font-size:.7rem;color:var(--mut);text-align:center}
+/* bars */
+.bar{margin:14px 0}
+.bar .lab{display:flex;justify-content:space-between;font-size:.9rem;margin-bottom:5px}
+.bar .lab b{font-family:monospace;color:var(--acc)}
+.track{background:#0f1620;border-radius:6px;height:22px;overflow:hidden}
+.fill{height:100%;border-radius:6px;width:0;transition:width 1.3s cubic-bezier(.2,.8,.2,1)}
+.f-cnn{background:linear-gradient(90deg,#1f6feb,#4da3ff)}
+.f-gb{background:#3a4860}
+.f-bad{background:#b04a4a}
+/* map compare */
+.map{display:grid;grid-template-columns:1fr 40px 1fr;align-items:center;gap:10px;margin-top:22px}
+.mapbox{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:20px;text-align:center}
+.mapbox .t{color:var(--acc);font-weight:700;margin-bottom:12px}
+.mg{display:grid;gap:3px;justify-content:center}
+.mg span{width:14px;height:14px;border-radius:2px;background:#0f1620;display:inline-block}
+.mg span.d{background:var(--acc2)}
+.arrow{text-align:center;color:var(--mut);font-size:1.5rem}
+.foot{padding:48px 0;text-align:center;color:var(--mut)}
+.foot a{color:var(--acc);text-decoration:none}
+.kpi{display:flex;gap:28px;flex-wrap:wrap;margin-top:26px}
+.kpi div{font-family:monospace}
+.kpi .v{font-size:2rem;font-weight:800;color:var(--ok)}
+.kpi .k{color:var(--mut);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<section class="hero">
+  <h1>MFL Defect Signature<br>Classification</h1>
+  <p class="lead">누설자속탐상(MFL) 검사 신호에서 <b style="color:var(--txt)">결함의 공간 형태(signature)를 분류</b>한 프로젝트.<br>"무엇을 했는가"보다 <b style="color:var(--acc2)">"왜 그렇게 결정했는가"</b>를 데이터로 검증한 기록.</p>
+  <div>
+    <span class="tag">2D CNN</span><span class="tag">비파괴검사 신호</span><span class="tag">공학적 의사결정</span><span class="tag">반도체 PE 연관</span>
+  </div>
+  <div class="kpi">
+    <div><div class="v">0.961</div><div class="k">1차 PR-AUC (구조 vs 노이즈)</div></div>
+    <div><div class="v">0.906</div><div class="k">2차 macro-F1 (형태 3-class)</div></div>
+    <div><div class="v">−0.24</div><div class="k">채널 셔플 시 폭락 (공간 의존 증명)</div></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">01</span>풀어야 할 문제</h2>
+  <p class="lead">검사 장비는 이미 <b style="color:var(--txt)">진폭 임계(1.5V/26mm)</b>로 "결함 유무"를 찍는다. 그래서 결함 유무를 또 맞히는 건 <b>if문 한 줄(trivial)</b>이라 의미가 없다.</p>
+  <p class="lead">→ 문제를 다시 정의했다: <b style="color:var(--acc2)">임계를 넘은 결함이 "어떤 공간 형태"인가</b>를 분류한다. 형태가 결함의 원인(root cause)을 가리키기 때문.</p>
+</section>
+
+<section>
+  <h2><span class="num">02</span>핵심 통찰 — staircase</h2>
+  <p class="lead">강철바가 <b style="color:var(--txt)">회전(462rpm)하며</b> 통과하므로, 하나의 결함이 센서 10개를 <b>시간차를 두고 순차적으로</b> 자극한다. 신호 위에서 결함이 <b style="color:var(--acc2)">대각선 궤적</b>을 그린다 — 이게 staircase. <span class="muted">(아래 애니메이션: 결함이 센서를 훑고 지나감)</span></p>
+  <div class="chl"><span>A1</span><span>A2</span><span>A3</span><span>A4</span><span>A5</span><span>B1</span><span>B2</span><span>B3</span><span>B4</span><span>B5</span></div>
+  <div class="sg" id="sg"></div>
+  <p class="muted" style="text-align:center;font-size:.85rem">진폭이 모두 임계를 넘으므로 <b>크기로는 못 가른다</b> → 오직 <b style="color:var(--acc)">공간 패턴</b>으로만 갈림 → 2D CNN의 필요성이 데이터로 성립</p>
+</section>
+
+<section>
+  <h2><span class="num">03</span>공학적 사고 — 결정마다 근거</h2>
+  <p class="lead">기법을 나열한 게 아니라, 막힐 때마다 <b style="color:var(--txt)">가설을 세우고 데이터로 검증</b>했다.</p>
+  <div class="grid2" id="cards">
+    <div class="card"><div class="q">문제</div><h3>정규화가 신호를 죽였다</h3><p>채널별 robust z-score를 쓰자 결함 스파이크와 채널 간 상대크기가 눌려 macro-F1 0.337로 붕괴.</p><p><b style="color:var(--txt)">가설→검증:</b> 스파이크를 살리는 log1p로 교체.</p><span class="res">0.337 → 0.813</span></div>
+    <div class="card"><div class="q">의심</div><h3>장비 표기를 믿지 않았다</h3><p>"센서가 진짜 어떤 순서로 붙어있나?" 30만 결함의 채널 전이를 집계해 배치를 역추정.</p><p><b style="color:var(--txt)">발견:</b> A5–B1 인접, B5–A1=0 → 열린 사슬 → circular 아닌 replicate padding.</p><span class="res">데이터로 topology 복원</span></div>
+    <div class="card"><div class="q">검증</div><h3>"진짜 공간을 쓰나?" 셔플 실험</h3><p>채널 순서를 무작위로 섞어 재학습. 모델이 공간 배치를 쓴다면 무너져야 한다.</p><p><b style="color:var(--txt)">결과:</b> 0.894 → 0.650, GB보다도 낮아짐 → 공간 의존 입증.</p><span class="res">−0.24 폭락</span></div>
+    <div class="card"><div class="q">절제</div><h3>안 통한 것도 기록했다</h3><p>명시적 방향벡터를 late-fusion으로 붙였더니 오히려 하락. 메타데이터(line speed 등)는 LOT 상수라 형태 판별력 0.</p><p><b style="color:var(--txt)">결론:</b> CNN이 이미 충분 → 불필요한 것 제거(Occam).</p><span class="res">도구 맹신 X, 검증 O</span></div>
+    <div class="card"><div class="q">정합</div><h3>지표와 손실을 일치시켰다</h3><p>평가가 macro-F1인데 F1은 미분 불가. 확률로 TP/FP/FN을 연속화해 미분가능한 soft-F1을 직접 최적화.</p><p><b style="color:var(--txt)">효과:</b> 약한 클래스(line/band) F1 개선.</p><span class="res">0.903 → 0.906</span></div>
+    <div class="card"><div class="q">정직</div><h3>누수와 한계를 먼저 막았다</h3><p>같은 LOT의 데이터가 train/test에 섞이면 누수 → LOT 단위 group split. 라벨은 규칙 기반 weak label임을 명시.</p><p><b style="color:var(--txt)">표현:</b> "진짜 결함"이 아닌 "후보"로.</p><span class="res">결과 신뢰성 확보</span></div>
+  </div>
+</section>
+
+<section>
+  <h2><span class="num">04</span>결과</h2>
+  <div id="bars">
+    <div class="bar"><div class="lab"><span>2차 형태분류 — <b>2D CNN</b></span><b>0.906</b></div><div class="track"><div class="fill f-cnn" data-w="90.6"></div></div></div>
+    <div class="bar"><div class="lab"><span>2차 형태분류 — baseline (GB)</span><b>0.748</b></div><div class="track"><div class="fill f-gb" data-w="74.8"></div></div></div>
+    <div class="bar"><div class="lab"><span>채널 셔플 (공간 파괴 시)</span><b>0.650</b></div><div class="track"><div class="fill f-bad" data-w="65"></div></div></div>
+  </div>
+  <p class="muted" style="margin-top:14px;font-size:.9rem">형태는 "크기"로 안 갈리고 "방향"이 핵심 → GB는 0.748에 그치고, CNN이 +0.16 압도하며, 공간을 깨면 GB보다도 낮은 0.650으로 폭락.</p>
+</section>
+
+<section>
+  <h2><span class="num">05</span>반도체 공정과의 연관</h2>
+  <p class="lead">물리현상을 동일시한 게 아니라 <b style="color:var(--txt)">문제 구조</b>가 같다. 검사 데이터의 <b style="color:var(--acc2)">공간 패턴 → failure mode → 원인 좁히기</b>는 반도체 수율 분석의 핵심 루프다.</p>
+  <div class="map">
+    <div class="mapbox"><div class="t">MFL 결함 맵</div><div class="mg" id="mg1" style="grid-template-columns:repeat(5,1fr)"></div><p class="muted" style="font-size:.8rem;margin-top:10px">길이 × 센서채널<br>형태: staircase/line/band</p></div>
+    <div class="arrow">≈</div>
+    <div class="mapbox"><div class="t">반도체 Wafer Map</div><div class="mg" id="mg2" style="grid-template-columns:repeat(6,1fr)"></div><p class="muted" style="font-size:.8rem;margin-top:10px">die 격자<br>패턴: Scratch/Ring/Loc</p></div>
+  </div>
+  <p class="muted" style="text-align:center;margin-top:20px;font-size:.92rem"><b style="color:var(--acc)">Product Engineering 연결:</b> 장비 임계가 만든 허위경보(overkill) 분리 = 수율 손실 방지 KPI. 결함 형태로 의심 공정·장비를 좁히는 yield-learning과 구조적으로 동일.</p>
+</section>
+
+<div class="foot">
+  <p><b>RL9-csv</b> · <a href="https://github.com/RL9-csv/mfl-defect-signature-classification">GitHub Repository →</a></p>
+  <p class="muted" style="font-size:.85rem;margin-top:8px">Python · PyTorch · scikit-learn · SciPy</p>
+</div>
+
+</div>
+<script>
+// staircase 애니메이션: 결함이 채널을 순차 자극 (대각선)
+const sg=document.getElementById('sg'), ROWS=7, seq=[5,4,3,2,1,0,9]; // 회전 진행
+let cells=[];
+for(let r=0;r<ROWS;r++)for(let c=0;c<10;c++){const d=document.createElement('div');d.className='cell';d.textContent='·';sg.appendChild(d);cells.push(d);}
+let step=0;
+function anim(){
+  cells.forEach(c=>{c.classList.remove('hot');c.textContent='·';});
+  for(let r=0;r<ROWS;r++){const ch=seq[(r+step)%seq.length];const idx=r*10+ch;if(cells[idx]){cells[idx].classList.add('hot');cells[idx].textContent='2.6';}}
+  step=(step+1)%seq.length;
+}
+anim();setInterval(anim,650);
+// scroll reveal cards
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)e.target.classList.add('show')}),{threshold:.15});
+document.querySelectorAll('.card').forEach(c=>io.observe(c));
+// bars fill on view
+const bo=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting)document.querySelectorAll('.fill').forEach(f=>f.style.width=f.dataset.w+'%')}),{threshold:.3});
+bo.observe(document.getElementById('bars'));
+// wafer/MFL defect dots
+function fill(id,n,pat){const g=document.getElementById(id);for(let i=0;i<n;i++){const s=document.createElement('span');if(pat(i))s.classList.add('d');g.appendChild(s);}}
+fill('mg1',30,i=>{const r=Math.floor(i/5),c=i%5;return c===(r%5);}); // 대각 staircase
+fill('mg2',36,i=>{const r=Math.floor(i/6),c=i%6;return (r===0||r===5||c===0||c===5)&&Math.random()>.4;}); // edge-ring
+</script>
+</body>
+</html>
