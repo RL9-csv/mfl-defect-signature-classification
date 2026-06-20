@@ -81,14 +81,41 @@ $$\mathcal{L}=0.5\,\mathcal{L}_{\mathrm{CE}}+\mathcal{L}_{\text{soft-}F1}$$
 - **accuracy 금지** (클래스 불균형) → **PR-AUC / macro-F1** 사용
 - baseline: **Gradient Boosting (shape feature)** — 해석가능 모델이 어디까지 가나 비교
 
-## 4. 결과
+## 4. 통계·EDA — 딥러닝 결정의 시각적 근거
+
+각 분석은 *"그래서 이 딥러닝 결정을 내렸다"* 의 근거다. (생성: `scripts/visualize.py`, `scripts/decision_tree.py`)
+
+**신호 분포 → 정규화 선택**
+![distribution](assets/03_distribution_log1p.png)
+raw 진폭은 0 근처 극단 right-skew라, CNN 입력으로 그대로 쓰면 결함 스파이크가 학습을 지배함. **log1p로 분포를 펴서 스파이크와 채널 간 상대크기를 보존** → 4채널 입력의 정규화 근거. (robust z-score를 쓰자 macro-F1이 0.337로 무너졌고, log1p로 0.813으로 회복)
+
+**센서 topology 역추정**
+![transition](assets/05_sensor_transition.png)
+약 30만 결함의 채널 이동을 집계. 대각선 옆이 강함 = 결함이 *인접 센서로 순차 이동*. **A5–B1 인접 확인, B5–A1 = 0(열린 사슬)** → 장비 표기를 믿지 않고 데이터로 배치를 복원, 입력 채널을 원주순서로 배열 + `replicate` padding 근거.
+
+**결함 형태 규칙 (Decision Tree, depth 3)**
+![decision tree](assets/06_decision_tree.png)
+![importance](assets/07_tree_importance.png)
+형태는 단 **2개 측정값(length, n_sensors)으로 완전 분리**됨. length가 짧으면 band, 길고 좁으면 line, 길고 넓으면 staircase. **diagonal·size는 기여 0 = 대각성은 length×센서수에 이미 포함된 중복 정보**임을 발견. 화이트박스로 규칙을 압축 시각화 — CNN은 이 규칙 *너머*의 raw 공간 패턴을 학습(셔플 시 무너지는 정보).
+
+**SPC 관리도 — 통계적 이상탐지**
+![spc](assets/01_spc_control_chart.png)
+베이스노이즈를 ±3σ 관리도로 보면 대부분 관리한계 내, **out-of-control 점이 이상 신호** → 딥러닝 없이 통계로도 이상을 잡을 수 있음(PE의 "특이점 발견"과 연결).
+
+**채널 상관 / 결함 형태**
+![correlation](assets/02_channel_correlation.png)
+정상 구간 채널은 거의 독립 → 결함은 *공간적으로 연결된* 신호로만 구별됨(공간 패턴 학습의 근거).
+![shapes](assets/04_defect_shapes.png)
+staircase / band / line 형태가 CNN 입력(log1p 진폭)에서 어떻게 보이는지.
+
+## 5. 결과
 
 | 실험 | baseline (GB) | 2D CNN |
 |---|---|---|
 | 1차 (구조 vs 노이즈) | PR-AUC 0.859 | **PR-AUC 0.961** |
 | 2차 (형태 3-class) | macro-F1 0.748 | **macro-F1 0.906** |
 
-## 5. Ablation — 가설을 데이터로 검증
+## 6. Ablation — 가설을 데이터로 검증
 
 | ablation | 결과 | 해석 |
 |---|---|---|
@@ -99,13 +126,13 @@ $$\mathcal{L}=0.5\,\mathcal{L}_{\mathrm{CE}}+\mathcal{L}_{\text{soft-}F1}$$
 
 1차는 weak label이 "퍼짐 크기"로 정의돼 비교적 쉬움(GB도 0.859). **2차 형태분류가 본게임** — 크기로 안 갈리고 *방향*이 핵심이라 GB가 0.748로 약하고, CNN이 +0.16 압도하며, 채널 셔플에 −0.24 폭락함.
 
-## 6. 한계 (정직)
+## 7. 한계 (정직)
 
 - weak label(형태 규칙 기반) → 성능 천장이 규칙 정확도에 묶임
 - 진짜 결함의 물리적 ground truth(절단검사)는 없음 → "진짜 결함" 단정이 아닌 "후보"로 표현
 - 향후: 약 85,000 bar **무라벨** 신호로 self-supervised 사전학습 → 적은 라벨로 fine-tune
 
-## 7. 반도체 Product Engineering 연결
+## 8. 반도체 Product Engineering 연결
 
 - 결함 **형태(signature) → failure mode → 의심 원인 좁히기** = yield-learning 루프
 - 장비 임계가 만든 **허위경보(overkill) 분리** = PE 핵심 KPI(수율 손실 방지)
